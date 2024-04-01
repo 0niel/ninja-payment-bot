@@ -1,0 +1,30 @@
+{
+  "ru": {
+    "bot_start": "👋 Чтобы купить подписку, введите своё имя пользователя на форуме mirea.ninja\n\nЕсли у вас нет аккаунта, то создайте учётную запись на сайте https://mirea.ninja",
+    "already_subscribed": "❌ У вас уже есть активная подписка!",
+    "user_not_found": "❌ Пользователь не найден! Пожалуйста, введите корректное имя пользователя.",
+    "generic_error": "❌ Произошла ошибка при получении данных. Повторите попытку позже или обратитесь к администратору",
+    "pre_subscription_confirmation": "🔑 Пожалуйста, подтвердите, что вы хотите купить подписку на {days} дней.\n\nВаше имя пользователя: {username}",
+    "subscription_payment_description": "Вы оплачиваете подписку к AI инфраструктуре на форуме на {days} дней!",
+    "payment_error": "Что-то пошло не так.. Попробуйте ещё раз.",
+    "subscription_activation_message": "✅ Подписка успешно оформлена!\n\n📅 Срок действия подписки: {start_date} - {end_date}\n\n",
+    "access_instruction": "👋 Для получения доступа к AI инфраструктуре, перейдите на форум https://mirea.ninja\n\nЧитайте инструкцию по использованию AI инфраструктуры в разделе https://mirea.ninja/c/ai/111",
+    "contact_admin": "Если у вас возникли вопросы, обращайтесь к администратору",
+    "language_choice": "Please choose your language:",
+    "language_set": "Язык установлен на {language_code}."
+  },
+  "en": {
+    "bot_start": "👋 To purchase a subscription, enter your username on the mirea.ninja forum\n\nIf you don't have an account, create one at https://mirea.ninja",
+    "already_subscribed": "❌ You already have an active subscription!",
+    "user_not_found": "❌ User not found! Please, enter a valid username.",
+    "generic_error": "❌ An error occurred while fetching data. Please try again later or contact an administrator",
+    "pre_subscription_confirmation": "🔑 Please confirm that you want to buy a subscription for {days} days.\n\nYour username: {username}",
+    "subscription_payment_description": "You're paying for a subscription to the AI infrastructure on the forum for {days} days!",
+    "payment_error": "Something went wrong.. Please try again.",
+    "subscription_activation_message": "✅ Your subscription has been successfully activated!\n\n📅 Subscription validity: {start_date} - {end_date}\n\n",
+    "access_instruction": "👋 To access the AI infrastructure, go to the forum https://mirea.ninja\n\nRead the guide on how to use the AI infrastructure in the section https://mirea.ninja/c/ai/111",
+    "contact_admin": "If you have any questions, please contact the administrator",
+    "language_choice": "Please choose your language:",
+    "language_set": "Language set to {language_code}."
+  }
+}

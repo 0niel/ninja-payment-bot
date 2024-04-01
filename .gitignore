@@ -15,3 +15,4 @@ db_data/
 .yc
 yappa*
 *.db
+!translations.json
