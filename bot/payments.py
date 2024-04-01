@@ -23,6 +23,7 @@ from telegram.ext import (
 from bot import config
 from bot.config import DISCOURSE_API_KEY, PAYMENT_PROVIDER_TOKEN
 from bot.models.subscription import Subscription
+from bot.utils.localization import Localization
 
 logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
 logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -45,35 +46,52 @@ KEYBOARD_FEEDBACK_CONTACT = [
     ]
 ]
 
+localization = Localization()
+
+
+async def language_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    keyboard = [
+        [InlineKeyboardButton("🇷🇺 Русский", callback_data="ru"), InlineKeyboardButton("🇺🇸 English", callback_data="en")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.message.reply_text(localization.get("language_choice"), reply_markup=reply_markup)
+
+
+async def language_button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    language_code = query.data
+    context.user_data["language"] = language_code
+    await query.answer()
+    await query.edit_message_text(
+        text=localization.get("language_set", language_code).format(language_code=language_code)
+    )
+
 
 async def start_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    language = context.user_data.get("language", "ru")
     logger.info(f"User {update.message.from_user.id} ({update.message.from_user.username}) started the bot")
-    msg = (
-        "👋 Чтобы купить подписку, введите своё имя пользователя на форуме mirea.ninja\n\n"
-        "Если у вас нет аккаунта, то создайте учётную запись на сайте https://mirea.ninja"
-    )
+    msg = localization.get("bot_start", language)
     await update.message.reply_text(msg)
     return USERNAME_WAITING
 
 
 async def on_username_received_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    language = context.user_data.get("language", "ru")
     username = update.message.text.strip()
 
     try:
         subscription = await Subscription.get_by_username(username)
         if subscription:
-            await update.message.reply_text("❌ У вас уже есть активная подписка!")
+            await update.message.reply_text(localization.get("already_subscribed", language))
             return
 
         user = discourse_client.user(username)
         if not user:
-            await update.message.reply_text(
-                "❌ Пользователь не найден! Пожалуйста, введите корректное имя пользователя."
-            )
+            await update.message.reply_text(localization.get("user_not_found", language))
             return
 
         if DISCOURSE_GROUP_ID in user["groups"]:
-            await update.message.reply_text("❌ У вас уже есть активная подписка!")
+            await update.message.reply_text(localization.get("already_subscribed", language))
             return
 
         context.user_data["username"] = username
@@ -82,28 +100,25 @@ async def on_username_received_callback(update: Update, context: ContextTypes.DE
         logger.error("Failed to get user: %s", e)
         response = e.response
         if response.status_code == 404:
-            await update.message.reply_text(
-                "❌ Пользователь не найден! Пожалуйста, введите корректное имя пользователя."
-            )
+            await update.message.reply_text(localization.get("user_not_found", language))
         else:
             await update.message.reply_text(
-                "❌ Произошла ошибка при получении данных. Повторите попытку позже или обратитесь к администратору",
+                localization.get("generic_error", language),
                 reply_markup=InlineKeyboardMarkup(KEYBOARD_FEEDBACK_CONTACT),
             )
         return
     except Exception as e:
         logger.error("Failed to get user: %s", e)
         await update.message.reply_text(
-            "❌ Произошла ошибка при получении данных. Обратитесь к администратору",
+            localization.get("generic_error", language),
             reply_markup=InlineKeyboardMarkup(KEYBOARD_FEEDBACK_CONTACT),
         )
         return
 
     avatar = user["avatar_template"].replace("{size}", "100")
     avatar = f"{DISCOURSE_URL}{avatar}"
-    msg = (
-        f"🔑 Пожалуйста, подтвердите, что вы хотите купить подписку на {SUBSCRIPTION_DURATION_DAYS} дней.\n\n"
-        f"Ваше имя пользователя: {username}"
+    msg = localization.get("pre_subscription_confirmation", language).format(
+        days=SUBSCRIPTION_DURATION_DAYS, username=username
     )
 
     keyboard = [
@@ -119,6 +134,7 @@ async def on_username_received_callback(update: Update, context: ContextTypes.DE
 
 
 async def start_with_shipping_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    language = context.user_data.get("language", "ru")
     query = update.callback_query
 
     if query.data == "cancel":
@@ -130,7 +146,7 @@ async def start_with_shipping_callback(update: Update, context: ContextTypes.DEF
 
     chat_id = query.message.chat_id
     title = "Оплата подписки"
-    description = f"Вы оплачиваете подписку к AI инфраструктуре на форуме на {SUBSCRIPTION_DURATION_DAYS} дней!"
+    description = localization.get("subscription_payment_description", language).format(days=SUBSCRIPTION_DURATION_DAYS)
     prices = [LabeledPrice("Подписка", SUBSCRIPTION_PRICE * 100)]
 
     logger.info(f"Sending invoice to user {chat_id} for subscription")
@@ -147,24 +163,26 @@ async def start_with_shipping_callback(update: Update, context: ContextTypes.DEF
 
 
 async def precheckout_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    language = context.user_data.get("language", "ru")
     logger.info(f"Precheckout query: {update.pre_checkout_query}")
     username = context.user_data.get("username")
     query = update.pre_checkout_query
     if query.invoice_payload != CUSTOM_PAYLOAD or not username:
         logger.error("Invalid payload")
-        await query.answer(ok=False, error_message="Что-то пошло не так.. Попробуйте ещё раз.")
+        await query.answer(ok=False, error_message=localization.get("payment_error", language))
     else:
         logger.info("Precheckout query is valid")
         await query.answer(ok=True)
 
 
 async def successful_payment_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    language = context.user_data.get("language", "ru")
     try:
         user_id = update.message.from_user.id
         username = context.user_data.get("username")
         if not username:
             await update.message.reply_text(
-                "❌ Произошла ошибка! Пользователь не найден!",
+                localization.get("generic_error", language),
                 reply_markup=InlineKeyboardMarkup(KEYBOARD_FEEDBACK_CONTACT),
             )
             return
@@ -176,21 +194,19 @@ async def successful_payment_callback(update: Update, context: ContextTypes.DEFA
         context.job_queue.run_once(add_user_to_group_task, 0, data={"username": subscription.username})
 
         await update.message.reply_text(
-            f"✅ Подписка успешно оформлена!\n\n"
-            f"📅 Срок действия подписки: {start_date.strftime('%d.%m.%Y')} - {end_date.strftime('%d.%m.%Y')}\n\n"
+            localization.get("subscription_activation_message", language).format(
+                start_date=start_date.strftime("%d.%m.%Y"), end_date=end_date.strftime("%d.%m.%Y")
+            )
         )
+        await update.message.reply_text(localization.get("access_instruction", language))
         await update.message.reply_text(
-            "👋 Для получения доступа к AI инфраструктуре, перейдите на форум https://mirea.ninja\n\n"
-            "Читайте инструкцию по использованию AI инфраструктуры в разделе https://mirea.ninja/c/ai/111",
-        )
-        await update.message.reply_text(
-            "Если у вас возникли вопросы, обращайтесь к администратору",
+            localization.get("contact_admin", language),
             reply_markup=InlineKeyboardMarkup(KEYBOARD_FEEDBACK_CONTACT),
         )
     except Exception as e:
         logger.error("Failed to create subscription: %s", e)
         await update.message.reply_text(
-            "❌ Произошла ошибка при оформлении подписки!",
+            localization.get("generic_error", language),
             reply_markup=InlineKeyboardMarkup(KEYBOARD_FEEDBACK_CONTACT),
         )
         return
@@ -258,6 +274,8 @@ def init_handlers(app: Application) -> None:
     app.add_handler(PreCheckoutQueryHandler(precheckout_callback))
     app.add_handler(MessageHandler(filters.SUCCESSFUL_PAYMENT, successful_payment_callback))
     app.add_handler(conv_handler)
+    app.add_handler(CommandHandler("language", language_callback))
+    app.add_handler(CallbackQueryHandler(language_button_callback, pattern="^(ru|en)$"))
 
     app.add_error_handler(error_handler)
 
